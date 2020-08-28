@@ -1,27 +1,37 @@
 const Koa = require('koa')
-const Router = require('koa-router')
 const body = require('koa-better-body')
 const convert = require('koa-convert')
 const staticCache = require('koa-static-cache')
 const session = require('koa-session')
-const mysql = require('mysql-pro')
-const cors = require('koa-cors')
+const cors = require('@koa/cors')
 const pathlib = require('path')
-
 const config = require('./config')
+const error = require('./libs/error.handler')
+const log = require('./libs/log')
 let server = new Koa()
-let r1 = new Router()
-server.use(cors({}))
-server.use(r1.routes())
-server.use(convert(body({
-  uploadDir: pathlib.resolve('www/upload')
-})))
-r1.get('/',(ctx)=>{
-  console.log(ctx);
-  
-  ctx.response.body = '234'
+error(server)
+log(server)
+server.use(async (ctx, next)=> {
+  ctx.set('Access-Control-Allow-Origin', '*');
+  ctx.set('Access-Control-Allow-Headers', 'Content-Type, Content-Length, Authorization, Accept, X-Requested-With , yourHeaderFeild');
+  ctx.set('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
+  if (ctx.method == 'OPTIONS') {
+    ctx.body = 200; 
+  } else {
+    await next();
+  }
+});
+server.use(async (ctx,next)=>{
+  ctx.db = require('./libs/db')
+  await next()
 })
-server.keys = ['qweqeqwezdfsdgjijfmnxc.nv']
+server.use(require('./src/routers/1'))
+// server.use(cors())
+server.use(convert(body({
+  uploadDir: pathlib.resolve(config.uploadDir)
+})))
+
+server.keys = config.keys
 server.use(session({},server))
-server.use(staticCache(pathlib.resolve('www')))
-server.listen(config.port)
+server.use(staticCache(pathlib.resolve(config.static)))
+server.listen(config.prot)
